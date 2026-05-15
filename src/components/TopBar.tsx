@@ -9,7 +9,7 @@ export function TopBar({ title, onRefresh }: { title: string; onRefresh?: () => 
     <div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-background/80 px-4 sm:px-8 py-4 backdrop-blur-xl">
       <h1 className="truncate text-lg sm:text-xl font-bold tracking-tight">{title}</h1>
       <div className="flex items-center gap-2">
-        <button className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-medium text-muted-foreground shadow-[var(--shadow-soft)] hover:bg-secondary">
+        <button className="hidden sm:flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-medium text-muted-foreground shadow-[var(--shadow-soft)] hover:bg-secondary">
           <Calendar className="h-3.5 w-3.5" /> Last 30 days
         </button>
         <button onClick={onRefresh} className="rounded-xl bg-card p-2 text-muted-foreground shadow-[var(--shadow-soft)] hover:bg-secondary">
