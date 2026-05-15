@@ -1,0 +1,8 @@
+wrangler.jsonc
+.wrangler
+node_modules
+.output
+.cache
+supabase
+*.log
+.DS_Store
