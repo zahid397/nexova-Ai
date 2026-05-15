@@ -14,7 +14,162 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_history: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          response: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          response: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          response?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      contracts: {
+        Row: {
+          content: string | null
+          created_at: string
+          end_date: string | null
+          id: string
+          start_date: string | null
+          status: string
+          title: string
+          value: number
+          vendor: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          start_date?: string | null
+          status?: string
+          title: string
+          value?: number
+          vendor: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          start_date?: string | null
+          status?: string
+          title?: string
+          value?: number
+          vendor?: string
+        }
+        Relationships: []
+      }
+      inventory: {
+        Row: {
+          category: string
+          id: string
+          item_name: string
+          price: number
+          quantity: number
+          reorder_level: number
+          sku: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          id?: string
+          item_name: string
+          price?: number
+          quantity?: number
+          reorder_level?: number
+          sku: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          id?: string
+          item_name?: string
+          price?: number
+          quantity?: number
+          reorder_level?: number
+          sku?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          name: string
+          role: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id: string
+          name?: string
+          role?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      sales_records: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          customer: string | null
+          id: string
+          order_id: string | null
+          product_name: string
+          quantity: number
+          region: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          customer?: string | null
+          id?: string
+          order_id?: string | null
+          product_name: string
+          quantity?: number
+          region?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          customer?: string | null
+          id?: string
+          order_id?: string | null
+          product_name?: string
+          quantity?: number
+          region?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
