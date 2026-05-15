@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { TopBar } from "@/components/TopBar";
 import { ChatPanel } from "@/components/ChatPanel";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import gsap from "gsap";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { DollarSign, ShoppingBag, ArrowUp, ArrowDown, TrendingUp } from "lucide-react";
