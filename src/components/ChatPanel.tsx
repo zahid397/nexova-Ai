@@ -162,16 +162,32 @@ export function ChatPanel({ compact = false, onProviderChange }: { compact?: boo
       </div>
 
       <form onSubmit={e => { e.preventDefault(); send(); }} className="border-t border-border p-4">
+        <input ref={fileRef} type="file" accept=".txt,.csv,.json,.md,.log" onChange={handleAttach} className="hidden" />
         <div className="flex items-center gap-2 rounded-full border border-border bg-background py-1.5 pl-4 pr-1.5">
-          <button type="button" className="text-muted-foreground hover:text-foreground"><Paperclip className="h-4 w-4" /></button>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Attach file"
+          >
+            <Paperclip className="h-4 w-4" />
+          </button>
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Ask Nexova AI about revenue, orders, inventory..."
+            placeholder={listening ? "Listening..." : "Ask Nexova AI about revenue, orders, inventory..."}
             className="flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
           />
-          <button type="button" className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-secondary">
-            <Mic className="h-3.5 w-3.5" /> voice
+          <button
+            type="button"
+            onClick={toggleVoice}
+            className={`flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs transition ${
+              listening ? "bg-primary text-primary-foreground animate-pulse" : "text-muted-foreground hover:bg-secondary"
+            }`}
+            aria-label="Voice input"
+          >
+            {listening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+            {listening ? "stop" : "voice"}
           </button>
           <button type="submit" disabled={!input.trim() || thinking} className="flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-xs font-semibold text-background hover:opacity-90 disabled:opacity-40">
             <Send className="h-3.5 w-3.5" /> send
