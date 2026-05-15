@@ -43,16 +43,16 @@ function Dashboard() {
   useEffect(() => { load(); }, []);
 
   return (
-    <>
+    <div ref={rootRef}>
       <TopBar title="Dashboard" onRefresh={load} />
       <div className="space-y-6 p-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="gsap-title">
           <h2 className="text-2xl font-bold tracking-tight">Welcome back, Zahid Hasan!</h2>
           <p className="mt-1 text-sm text-muted-foreground">Here is your Nexova AI operational overview.</p>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
-          <div className="space-y-4 lg:col-span-2">
+          <div className="space-y-4 lg:col-span-2 [&>*]:gsap-kpi">
             <KpiCard
               icon={<DollarSign className="h-5 w-5" />}
               label="Total Revenue"
