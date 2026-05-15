@@ -52,7 +52,7 @@ function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
-          <div className="space-y-4 lg:col-span-2 [&>*]:gsap-kpi">
+          <div className="space-y-4 lg:col-span-2 gsap-kpi-wrap">
             <KpiCard
               icon={<DollarSign className="h-5 w-5" />}
               label="Total Revenue"
