@@ -66,11 +66,28 @@ function AIAgent() {
   return (
     <>
       <TopBar title="AI Agent" onRefresh={loadStats} />
-      <div className="grid grid-cols-1 gap-6 p-4 sm:p-8 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-5">
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-3 gap-3">
-            <StatPill icon={MessageSquare} label="Conversations" value={totalChats.toString()} sub="14d" />
-            <StatPill icon={Activity} label="Avg / day" value={(totalChats / 14).toFixed(1)} sub="usage" />
+      <div className="grid grid-cols-1 gap-4 p-3 sm:gap-6 sm:p-8 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-5">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/15 via-card to-card p-4 sm:p-5"
+          >
+            <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/20 blur-3xl" />
+            <div className="relative flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-primary">
+                <Sparkles className="h-5 w-5" fill="currentColor" />
+              </div>
+              <div>
+                <div className="text-base font-bold sm:text-lg">Nexova AI Agent</div>
+                <div className="text-[11px] text-muted-foreground sm:text-xs">Real-time RAG · Gemini 2.5 Flash · Live data</div>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-3 gap-2 sm:gap-3">
+            <StatPill icon={MessageSquare} label="Chats" value={totalChats.toString()} sub="14d" />
+            <StatPill icon={Activity} label="Avg/day" value={(totalChats / 14).toFixed(1)} sub="usage" />
             <StatPill icon={Sparkles} label="Model" value="Gemini" sub="2.5 Flash" />
           </motion.div>
 

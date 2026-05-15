@@ -117,7 +117,8 @@ export function ChatPanel({ compact = false, onProviderChange }: { compact?: boo
         </div>
         <div className="flex items-center gap-2 text-xs">
           <span className="h-2 w-2 animate-pulse rounded-full bg-[oklch(0.7_0.17_150)]" />
-          <span className="text-muted-foreground">Live RAG analysis enabled</span>
+          <span className="hidden text-muted-foreground sm:inline">Live RAG analysis enabled</span>
+          <span className="text-muted-foreground sm:hidden">Live</span>
         </div>
       </div>
 
@@ -161,13 +162,13 @@ export function ChatPanel({ compact = false, onProviderChange }: { compact?: boo
         )}
       </div>
 
-      <form onSubmit={e => { e.preventDefault(); send(); }} className="border-t border-border p-4">
+      <form onSubmit={e => { e.preventDefault(); send(); }} className="border-t border-border p-2.5 sm:p-4">
         <input ref={fileRef} type="file" accept=".txt,.csv,.json,.md,.log" onChange={handleAttach} className="hidden" />
-        <div className="flex items-center gap-2 rounded-full border border-border bg-background py-1.5 pl-4 pr-1.5">
+        <div className="flex items-center gap-1 rounded-full border border-border bg-background py-1.5 pl-2.5 pr-1.5 sm:gap-2 sm:pl-4">
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="text-muted-foreground hover:text-foreground"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
             aria-label="Attach file"
           >
             <Paperclip className="h-4 w-4" />
@@ -175,22 +176,27 @@ export function ChatPanel({ compact = false, onProviderChange }: { compact?: boo
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder={listening ? "Listening..." : "Ask Nexova AI about revenue, orders, inventory..."}
-            className="flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+            placeholder={listening ? "Listening..." : "Ask Nexova AI..."}
+            className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
           />
           <button
             type="button"
             onClick={toggleVoice}
-            className={`flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs transition ${
+            className={`flex shrink-0 items-center justify-center rounded-full p-2 transition ${
               listening ? "bg-primary text-primary-foreground animate-pulse" : "text-muted-foreground hover:bg-secondary"
             }`}
             aria-label="Voice input"
           >
-            {listening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-            {listening ? "stop" : "voice"}
+            {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </button>
-          <button type="submit" disabled={!input.trim() || thinking} className="flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-xs font-semibold text-background hover:opacity-90 disabled:opacity-40">
-            <Send className="h-3.5 w-3.5" /> send
+          <button
+            type="submit"
+            disabled={!input.trim() || thinking}
+            className="flex shrink-0 items-center justify-center rounded-full bg-foreground p-2 text-background hover:opacity-90 disabled:opacity-40 sm:gap-1.5 sm:px-3.5 sm:py-2"
+            aria-label="Send"
+          >
+            <Send className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+            <span className="hidden text-xs font-semibold sm:inline">send</span>
           </button>
         </div>
       </form>
