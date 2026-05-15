@@ -2,8 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { TopBar } from "@/components/TopBar";
 import { ChatPanel, triggerChatSend } from "@/components/ChatPanel";
 import { motion } from "framer-motion";
-import { Sparkles, FileText, TrendingUp, Package, Users, Bot } from "lucide-react";
-import { useState } from "react";
+import { Sparkles, FileText, TrendingUp, Package, Users, Bot, Activity, MessageSquare } from "lucide-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
 
 export const Route = createFileRoute("/_app/ai-agent")({ component: AIAgent });
 
