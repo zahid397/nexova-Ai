@@ -117,7 +117,8 @@ export function ChatPanel({ compact = false, onProviderChange }: { compact?: boo
         </div>
         <div className="flex items-center gap-2 text-xs">
           <span className="h-2 w-2 animate-pulse rounded-full bg-[oklch(0.7_0.17_150)]" />
-          <span className="text-muted-foreground">Live RAG analysis enabled</span>
+          <span className="hidden text-muted-foreground sm:inline">Live RAG analysis enabled</span>
+          <span className="text-muted-foreground sm:hidden">Live</span>
         </div>
       </div>
 
