@@ -27,12 +27,104 @@ const CAPS = [
 
 function AIAgent() {
   const [provider, setProvider] = useState("gemini");
+  const { user } = useAuth();
+  const [usage, setUsage] = useState<{ date: string; count: number }[]>([]);
+  const [providerStats, setProviderStats] = useState<{ name: string; value: number }[]>([]);
+  const [totalChats, setTotalChats] = useState(0);
+
+  const loadStats = async () => {
+    if (!user) return;
+    const since = new Date(Date.now() - 14 * 86400000).toISOString();
+    const { data } = await supabase
+      .from("chat_history")
+      .select("created_at,response")
+      .eq("user_id", user.id)
+      .gte("created_at", since)
+      .order("created_at", { ascending: true });
+    const rows = data ?? [];
+    setTotalChats(rows.length);
+    const daily: Record<string, number> = {};
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      daily[d] = 0;
+    }
+    rows.forEach((r: any) => {
+      const d = new Date(r.created_at).toISOString().slice(0, 10);
+      if (d in daily) daily[d]++;
+    });
+    setUsage(Object.entries(daily).map(([date, count]) => ({ date: date.slice(5), count })));
+    let gemini = 0, fallback = 0;
+    rows.forEach((r: any) => { if ((r.response ?? "").length >= 120) gemini++; else fallback++; });
+    setProviderStats([
+      { name: "Gemini", value: gemini },
+      { name: "Fallback", value: fallback },
+    ]);
+  };
+
+  useEffect(() => { loadStats(); }, [user]);
+
   return (
     <>
-      <TopBar title="AI Agent" />
-      <div className="grid grid-cols-1 gap-6 p-8 lg:grid-cols-3">
-        <div className="lg:col-span-2 h-[calc(100vh-9rem)]">
-          <ChatPanel onProviderChange={setProvider} />
+      <TopBar title="AI Agent" onRefresh={loadStats} />
+      <div className="grid grid-cols-1 gap-6 p-4 sm:p-8 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-5">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-3 gap-3">
+            <StatPill icon={MessageSquare} label="Conversations" value={totalChats.toString()} sub="14d" />
+            <StatPill icon={Activity} label="Avg / day" value={(totalChats / 14).toFixed(1)} sub="usage" />
+            <StatPill icon={Sparkles} label="Model" value="Gemini" sub="2.5 Flash" />
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <div className="text-xs text-muted-foreground">AI Activity</div>
+                <div className="text-sm font-bold">Conversations · Last 14 days</div>
+              </div>
+              <Activity className="h-4 w-4 text-primary" />
+            </div>
+            <div className="h-44">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={usage}>
+                  <defs>
+                    <linearGradient id="aiUsage" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="oklch(0.69 0.19 45)" stopOpacity={0.45} />
+                      <stop offset="100%" stopColor="oklch(0.69 0.19 45)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.93 0.005 80)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                  <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 8px 24px oklch(0.18 0.02 270 / 0.1)" }} />
+                  <Area type="monotone" dataKey="count" stroke="oklch(0.69 0.19 45)" strokeWidth={2.5} fill="url(#aiUsage)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <div className="text-xs text-muted-foreground">Provider mix</div>
+                <div className="text-sm font-bold">Gemini vs Fallback</div>
+              </div>
+              <Bot className="h-4 w-4 text-primary" />
+            </div>
+            <div className="h-36">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={providerStats}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.93 0.005 80)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                  <Tooltip contentStyle={{ borderRadius: 12, border: "none" }} />
+                  <Bar dataKey="value" fill="oklch(0.69 0.19 45)" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+
+          <div className="h-[600px]">
+            <ChatPanel onProviderChange={setProvider} />
+          </div>
         </div>
         <div className="space-y-5">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
