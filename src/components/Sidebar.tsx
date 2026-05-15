@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Bot, BarChart2, TrendingUp, Package, Settings, LogOut, Star, Moon, Sun } from "lucide-react";
+import { LayoutDashboard, Bot, BarChart2, TrendingUp, Package, Settings, LogOut, Star, Moon, Sun, Menu, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 
 const links = [
@@ -18,24 +18,37 @@ export function Sidebar() {
   const nav = useNavigate();
   const { profile, user, signOut } = useAuth();
   const [dark, setDark] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
 
+  // Close drawer on route change
+  useEffect(() => { setOpen(false); }, [loc.pathname]);
+
   const initials = (profile?.name || user?.email || "U")
     .split(/\s+/).map(s => s[0]).slice(0, 2).join("").toUpperCase();
 
-  return (
-    <aside className="fixed left-0 top-0 z-30 flex h-screen w-[260px] flex-col border-r border-border bg-sidebar">
-      <div className="flex items-center gap-2.5 px-6 py-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-[0_8px_24px_oklch(0.69_0.19_45/0.35)]">
-          <Star className="h-5 w-5 text-primary-foreground" fill="currentColor" />
+  const Panel = (
+    <>
+      <div className="flex items-center justify-between gap-2.5 px-6 py-6">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-[0_8px_24px_oklch(0.69_0.19_45/0.35)]">
+            <Star className="h-5 w-5 text-primary-foreground" fill="currentColor" />
+          </div>
+          <span className="text-lg font-bold tracking-tight">Nexova AI</span>
         </div>
-        <span className="text-lg font-bold tracking-tight">Nexova AI</span>
+        <button
+          onClick={() => setOpen(false)}
+          className="lg:hidden rounded-lg p-1.5 text-muted-foreground hover:bg-secondary"
+          aria-label="Close menu"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3">
         {links.map((l, i) => {
           const active = loc.pathname.startsWith(l.to);
           const Icon = l.icon;
@@ -69,7 +82,7 @@ export function Sidebar() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{profile?.name || "User"}</div>
-            <div className="text-xs text-muted-foreground">Super Admin</div>
+            <div className="truncate text-xs text-muted-foreground">{user?.email}</div>
           </div>
         </div>
         <div className="mt-2 flex items-center gap-1.5">
@@ -89,6 +102,55 @@ export function Sidebar() {
           </button>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile top bar with hamburger */}
+      <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/90 px-4 py-3 backdrop-blur-xl">
+        <button
+          onClick={() => setOpen(true)}
+          className="rounded-lg p-2 text-foreground hover:bg-secondary"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
+            <Star className="h-4 w-4 text-primary-foreground" fill="currentColor" />
+          </div>
+          <span className="text-sm font-bold">Nexova AI</span>
+        </div>
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+          {initials}
+        </div>
+      </div>
+
+      {/* Desktop fixed sidebar */}
+      <aside className="hidden lg:flex fixed left-0 top-0 z-30 h-screen w-[260px] flex-col border-r border-border bg-sidebar">
+        {Panel}
+      </aside>
+
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setOpen(false)}
+              className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.aside
+              initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              className="lg:hidden fixed left-0 top-0 z-50 flex h-screen w-[280px] flex-col border-r border-border bg-sidebar"
+            >
+              {Panel}
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
