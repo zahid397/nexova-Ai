@@ -181,3 +181,18 @@ function AIAgent() {
     </>
   );
 }
+
+function StatPill({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3 shadow-[var(--shadow-soft)]">
+      <div className="flex items-center gap-2">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="h-3.5 w-3.5" />
+        </div>
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      </div>
+      <div className="mt-2 text-lg font-bold leading-tight">{value}</div>
+      <div className="text-[10px] text-muted-foreground">{sub}</div>
+    </div>
+  );
+}
