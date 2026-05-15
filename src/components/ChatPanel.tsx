@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, Send, Paperclip, Mic, Star } from "lucide-react";
+import { Bot, Send, Paperclip, Mic, MicOff, Star } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { askNexova } from "@/lib/ai.functions";
+import { toast } from "sonner";
 
 interface Msg { role: "user" | "ai"; content: string; provider?: string }
 
@@ -12,8 +13,11 @@ export function ChatPanel({ compact = false, onProviderChange }: { compact?: boo
   ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [listening, setListening] = useState(false);
   const ask = useServerFn(askNexova);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const recogRef = useRef<any>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -50,6 +54,54 @@ export function ChatPanel({ compact = false, onProviderChange }: { compact?: boo
 
   // Expose send for quick questions
   (ChatPanel as any).__lastSend = send;
+
+  const handleAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1024 * 1024) {
+      toast.error("File too large (max 1 MB)");
+      e.target.value = "";
+      return;
+    }
+    try {
+      const text = await file.text();
+      const snippet = text.slice(0, 4000);
+      toast.success(`Attached ${file.name}`);
+      send(`I'm attaching content from "${file.name}". Please analyze:\n\n${snippet}`);
+    } catch {
+      toast.error("Could not read file");
+    }
+    e.target.value = "";
+  };
+
+  const toggleVoice = () => {
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      toast.error("Voice input not supported in this browser");
+      return;
+    }
+    if (listening) {
+      recogRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const r = new SR();
+    r.lang = "en-US";
+    r.interimResults = true;
+    r.continuous = false;
+    r.onresult = (ev: any) => {
+      const transcript = Array.from(ev.results).map((res: any) => res[0].transcript).join("");
+      setInput(transcript);
+    };
+    r.onend = () => setListening(false);
+    r.onerror = (ev: any) => {
+      setListening(false);
+      toast.error(`Voice error: ${ev.error}`);
+    };
+    recogRef.current = r;
+    r.start();
+    setListening(true);
+  };
 
   return (
     <div className={`flex flex-col rounded-2xl border border-border bg-card shadow-[var(--shadow-soft)] ${compact ? "h-[600px]" : "h-full"}`}>
@@ -110,16 +162,32 @@ export function ChatPanel({ compact = false, onProviderChange }: { compact?: boo
       </div>
 
       <form onSubmit={e => { e.preventDefault(); send(); }} className="border-t border-border p-4">
+        <input ref={fileRef} type="file" accept=".txt,.csv,.json,.md,.log" onChange={handleAttach} className="hidden" />
         <div className="flex items-center gap-2 rounded-full border border-border bg-background py-1.5 pl-4 pr-1.5">
-          <button type="button" className="text-muted-foreground hover:text-foreground"><Paperclip className="h-4 w-4" /></button>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Attach file"
+          >
+            <Paperclip className="h-4 w-4" />
+          </button>
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Ask Nexova AI about revenue, orders, inventory..."
+            placeholder={listening ? "Listening..." : "Ask Nexova AI about revenue, orders, inventory..."}
             className="flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
           />
-          <button type="button" className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-secondary">
-            <Mic className="h-3.5 w-3.5" /> voice
+          <button
+            type="button"
+            onClick={toggleVoice}
+            className={`flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs transition ${
+              listening ? "bg-primary text-primary-foreground animate-pulse" : "text-muted-foreground hover:bg-secondary"
+            }`}
+            aria-label="Voice input"
+          >
+            {listening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+            {listening ? "stop" : "voice"}
           </button>
           <button type="submit" disabled={!input.trim() || thinking} className="flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-xs font-semibold text-background hover:opacity-90 disabled:opacity-40">
             <Send className="h-3.5 w-3.5" /> send
