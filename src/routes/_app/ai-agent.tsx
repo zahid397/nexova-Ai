@@ -77,13 +77,29 @@ function AIAgent() {
             className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/15 via-card to-card p-4 sm:p-5"
           >
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/20 blur-3xl" />
-            <div className="relative flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-primary">
-                <Sparkles className="h-5 w-5" fill="currentColor" />
+            <div className="relative flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-primary">
+                  <Sparkles className="h-5 w-5" fill="currentColor" />
+                </div>
+                <div>
+                  <div className="text-base font-bold sm:text-lg">Nexova AI Agent</div>
+                  <div className="text-[11px] text-muted-foreground sm:text-xs">Real-time RAG · Gemini 2.5 Flash · Live data</div>
+                </div>
               </div>
-              <div>
-                <div className="text-base font-bold sm:text-lg">Nexova AI Agent</div>
-                <div className="text-[11px] text-muted-foreground sm:text-xs">Real-time RAG · Gemini 2.5 Flash · Live data</div>
+              <div className="flex items-center gap-2">
+                <motion.button
+                  whileTap={{ scale: 0.94 }} onClick={exportCSV}
+                  className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold transition hover:border-primary hover:bg-secondary"
+                >
+                  <FileDown className="h-3.5 w-3.5" /> CSV
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.94 }} onClick={exportPDF}
+                  className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:opacity-95"
+                >
+                  <Download className="h-3.5 w-3.5" /> PDF
+                </motion.button>
               </div>
             </div>
           </motion.div>
