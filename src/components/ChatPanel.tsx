@@ -55,6 +55,54 @@ export function ChatPanel({ compact = false, onProviderChange }: { compact?: boo
   // Expose send for quick questions
   (ChatPanel as any).__lastSend = send;
 
+  const handleAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1024 * 1024) {
+      toast.error("File too large (max 1 MB)");
+      e.target.value = "";
+      return;
+    }
+    try {
+      const text = await file.text();
+      const snippet = text.slice(0, 4000);
+      toast.success(`Attached ${file.name}`);
+      send(`I'm attaching content from "${file.name}". Please analyze:\n\n${snippet}`);
+    } catch {
+      toast.error("Could not read file");
+    }
+    e.target.value = "";
+  };
+
+  const toggleVoice = () => {
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      toast.error("Voice input not supported in this browser");
+      return;
+    }
+    if (listening) {
+      recogRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const r = new SR();
+    r.lang = "en-US";
+    r.interimResults = true;
+    r.continuous = false;
+    r.onresult = (ev: any) => {
+      const transcript = Array.from(ev.results).map((res: any) => res[0].transcript).join("");
+      setInput(transcript);
+    };
+    r.onend = () => setListening(false);
+    r.onerror = (ev: any) => {
+      setListening(false);
+      toast.error(`Voice error: ${ev.error}`);
+    };
+    recogRef.current = r;
+    r.start();
+    setListening(true);
+  };
+
   return (
     <div className={`flex flex-col rounded-2xl border border-border bg-card shadow-[var(--shadow-soft)] ${compact ? "h-[600px]" : "h-full"}`}>
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
