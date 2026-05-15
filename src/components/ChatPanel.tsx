@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, Send, Paperclip, Mic, Star } from "lucide-react";
+import { Bot, Send, Paperclip, Mic, MicOff, Star } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { askNexova } from "@/lib/ai.functions";
+import { toast } from "sonner";
 
 interface Msg { role: "user" | "ai"; content: string; provider?: string }
 
