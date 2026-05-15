@@ -12,7 +12,7 @@ function LoginPage() {
   const nav = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("demo@nexova.ai");
-  const [password, setPassword] = useState("password123");
+  const [password, setPassword] = useState("Nexova@2026!Secure");
   const [name, setName] = useState("Zahid Hasan");
   const [loading, setLoading] = useState(false);
 
@@ -93,7 +93,7 @@ function LoginPage() {
 
         <div className="mt-5 rounded-xl bg-secondary/60 p-3 text-xs">
           <div className="mb-1 font-semibold">Demo credentials</div>
-          <div className="text-muted-foreground">demo@nexova.ai / password123 — auto-creates on first sign-in</div>
+          <div className="text-muted-foreground">demo@nexova.ai / Nexova@2026!Secure — auto-creates on first sign-in</div>
         </div>
 
         <button
