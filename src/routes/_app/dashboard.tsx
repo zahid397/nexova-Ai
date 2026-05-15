@@ -92,15 +92,12 @@ function Dashboard() {
             </motion.div>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="lg:col-span-3"
-          >
+          <div className="lg:col-span-3 gsap-chat">
             <ChatPanel compact />
-          </motion.div>
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
