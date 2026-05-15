@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { TopBar } from "@/components/TopBar";
 import { ChatPanel } from "@/components/ChatPanel";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import gsap from "gsap";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { DollarSign, ShoppingBag, ArrowUp, ArrowDown, TrendingUp } from "lucide-react";
@@ -12,6 +13,17 @@ export const Route = createFileRoute("/_app/dashboard")({ component: Dashboard }
 function Dashboard() {
   const [stats, setStats] = useState({ revenue: 0, orders: 0, loading: true });
   const [chart, setChart] = useState<{ date: string; revenue: number }[]>([]);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!rootRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.from(".gsap-kpi-wrap > *", { y: 30, opacity: 0, duration: 0.7, stagger: 0.12, ease: "power3.out" });
+      gsap.from(".gsap-title", { y: 20, opacity: 0, duration: 0.6, ease: "power3.out" });
+      gsap.from(".gsap-chat", { x: 40, opacity: 0, duration: 0.8, delay: 0.2, ease: "power3.out" });
+    }, rootRef);
+    return () => ctx.revert();
+  }, []);
 
   const load = async () => {
     setStats(s => ({ ...s, loading: true }));
@@ -31,16 +43,16 @@ function Dashboard() {
   useEffect(() => { load(); }, []);
 
   return (
-    <>
+    <div ref={rootRef}>
       <TopBar title="Dashboard" onRefresh={load} />
       <div className="space-y-6 p-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="gsap-title">
           <h2 className="text-2xl font-bold tracking-tight">Welcome back, Zahid Hasan!</h2>
           <p className="mt-1 text-sm text-muted-foreground">Here is your Nexova AI operational overview.</p>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
-          <div className="space-y-4 lg:col-span-2">
+          <div className="space-y-4 lg:col-span-2 gsap-kpi-wrap">
             <KpiCard
               icon={<DollarSign className="h-5 w-5" />}
               label="Total Revenue"
@@ -80,15 +92,12 @@ function Dashboard() {
             </motion.div>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="lg:col-span-3"
-          >
+          <div className="lg:col-span-3 gsap-chat">
             <ChatPanel compact />
-          </motion.div>
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
