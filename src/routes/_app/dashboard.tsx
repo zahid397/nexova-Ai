@@ -18,9 +18,7 @@ function Dashboard() {
   useEffect(() => {
     if (!rootRef.current) return;
     const ctx = gsap.context(() => {
-      gsap.from(".gsap-kpi-wrap > *", { y: 30, opacity: 0, duration: 0.7, stagger: 0.12, ease: "power3.out" });
-      gsap.from(".gsap-title", { y: 20, opacity: 0, duration: 0.6, ease: "power3.out" });
-      gsap.from(".gsap-chat", { x: 40, opacity: 0, duration: 0.8, delay: 0.2, ease: "power3.out" });
+      gsap.fromTo(".gsap-title", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" });
     }, rootRef);
     return () => ctx.revert();
   }, []);
