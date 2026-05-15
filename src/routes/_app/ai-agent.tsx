@@ -2,7 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { TopBar } from "@/components/TopBar";
 import { ChatPanel, triggerChatSend } from "@/components/ChatPanel";
 import { motion } from "framer-motion";
-import { Sparkles, FileText, TrendingUp, Package, Users, Bot, Activity, MessageSquare } from "lucide-react";
+import { Sparkles, FileText, TrendingUp, Package, Users, Bot, Activity, MessageSquare, Download, FileDown } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -61,6 +64,55 @@ function AIAgent() {
     ]);
   };
 
+  const fetchAllChats = async () => {
+    if (!user) return [];
+    const { data } = await supabase
+      .from("chat_history")
+      .select("created_at,message,response")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    return data ?? [];
+  };
+
+  const exportCSV = async () => {
+    const rows = await fetchAllChats();
+    if (!rows.length) { toast.error("No activity to export"); return; }
+    const esc = (v: string) => `"${(v ?? "").replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+    const csv = ["Timestamp,Message,Response", ...rows.map((r: any) =>
+      [esc(new Date(r.created_at).toISOString()), esc(r.message), esc(r.response)].join(",")
+    )].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `nexova-ai-activity-${Date.now()}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} conversations`);
+  };
+
+  const exportPDF = async () => {
+    const rows = await fetchAllChats();
+    if (!rows.length) { toast.error("No activity to export"); return; }
+    const doc = new jsPDF();
+    doc.setFontSize(18); doc.text("Nexova AI — Activity Report", 14, 18);
+    doc.setFontSize(10); doc.setTextColor(120);
+    doc.text(`Generated ${new Date().toLocaleString()} · ${rows.length} conversations`, 14, 25);
+    autoTable(doc, {
+      startY: 32,
+      head: [["Time", "Message", "Response"]],
+      body: rows.map((r: any) => [
+        new Date(r.created_at).toLocaleString(),
+        (r.message ?? "").slice(0, 80),
+        (r.response ?? "").slice(0, 140),
+      ]),
+      styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
+      headStyles: { fillColor: [230, 120, 60] },
+      columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 60 }, 2: { cellWidth: 'auto' } },
+    });
+    doc.save(`nexova-ai-activity-${Date.now()}.pdf`);
+    toast.success(`Exported ${rows.length} conversations`);
+  };
+
   useEffect(() => { loadStats(); }, [user]);
 
   return (
@@ -74,13 +126,29 @@ function AIAgent() {
             className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/15 via-card to-card p-4 sm:p-5"
           >
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/20 blur-3xl" />
-            <div className="relative flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-primary">
-                <Sparkles className="h-5 w-5" fill="currentColor" />
+            <div className="relative flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-primary">
+                  <Sparkles className="h-5 w-5" fill="currentColor" />
+                </div>
+                <div>
+                  <div className="text-base font-bold sm:text-lg">Nexova AI Agent</div>
+                  <div className="text-[11px] text-muted-foreground sm:text-xs">Real-time RAG · Gemini 2.5 Flash · Live data</div>
+                </div>
               </div>
-              <div>
-                <div className="text-base font-bold sm:text-lg">Nexova AI Agent</div>
-                <div className="text-[11px] text-muted-foreground sm:text-xs">Real-time RAG · Gemini 2.5 Flash · Live data</div>
+              <div className="flex items-center gap-2">
+                <motion.button
+                  whileTap={{ scale: 0.94 }} onClick={exportCSV}
+                  className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold transition hover:border-primary hover:bg-secondary"
+                >
+                  <FileDown className="h-3.5 w-3.5" /> CSV
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.94 }} onClick={exportPDF}
+                  className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:opacity-95"
+                >
+                  <Download className="h-3.5 w-3.5" /> PDF
+                </motion.button>
               </div>
             </div>
           </motion.div>
