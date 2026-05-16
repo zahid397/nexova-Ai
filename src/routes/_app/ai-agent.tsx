@@ -2,14 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { TopBar } from "@/components/TopBar";
 import { ChatPanel, triggerChatSend } from "@/components/ChatPanel";
 import { motion } from "framer-motion";
-import { Sparkles, FileText, TrendingUp, Package, Users, Bot, Activity, MessageSquare, Download, FileDown } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import {
+  Sparkles, FileText, TrendingUp, Package, Users, Bot,
+  Download, FileDown, Share2, Copy, History, MessageSquare,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
+import { buildBusinessReport } from "@/lib/report-pdf";
 
 export const Route = createFileRoute("/_app/ai-agent")({ component: AIAgent });
 
@@ -18,6 +19,8 @@ const QUICK = [
   "Which contracts are expiring soon?",
   "Which items need urgent restocking?",
   "What is our profit margin trend?",
+  "Forecast revenue for next 30 days",
+  "Summarize active contracts",
 ];
 
 const CAPS = [
@@ -25,194 +28,169 @@ const CAPS = [
   { icon: FileText, label: "Contract Review", desc: "Risk and obligation extraction" },
   { icon: Sparkles, label: "Forecasting", desc: "30-day predictions" },
   { icon: Package, label: "Inventory Alerts", desc: "Restock recommendations" },
-  { icon: Users, label: "HR Data", desc: "Team performance" },
+  { icon: Users, label: "HR & Customers", desc: "Team & customer insights" },
 ];
 
 function AIAgent() {
   const [provider, setProvider] = useState("gemini");
-  const { user } = useAuth();
-  const [usage, setUsage] = useState<{ date: string; count: number }[]>([]);
-  const [providerStats, setProviderStats] = useState<{ name: string; value: number }[]>([]);
-  const [totalChats, setTotalChats] = useState(0);
+  const { user, profile } = useAuth();
+  const [history, setHistory] = useState<any[]>([]);
+  const [lastResponse, setLastResponse] = useState("");
 
-  const loadStats = async () => {
+  const loadHistory = async () => {
     if (!user) return;
-    const since = new Date(Date.now() - 14 * 86400000).toISOString();
-    const { data } = await supabase
-      .from("chat_history")
-      .select("created_at,response")
-      .eq("user_id", user.id)
-      .gte("created_at", since)
-      .order("created_at", { ascending: true });
-    const rows = data ?? [];
-    setTotalChats(rows.length);
-    const daily: Record<string, number> = {};
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-      daily[d] = 0;
-    }
-    rows.forEach((r: any) => {
-      const d = new Date(r.created_at).toISOString().slice(0, 10);
-      if (d in daily) daily[d]++;
-    });
-    setUsage(Object.entries(daily).map(([date, count]) => ({ date: date.slice(5), count })));
-    let gemini = 0, fallback = 0;
-    rows.forEach((r: any) => { if ((r.response ?? "").length >= 120) gemini++; else fallback++; });
-    setProviderStats([
-      { name: "Gemini", value: gemini },
-      { name: "Fallback", value: fallback },
-    ]);
-  };
-
-  const fetchAllChats = async () => {
-    if (!user) return [];
     const { data } = await supabase
       .from("chat_history")
       .select("created_at,message,response")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(500);
-    return data ?? [];
+      .limit(20);
+    setHistory(data ?? []);
+    if (data?.[0]) setLastResponse(data[0].response);
   };
 
-  const exportCSV = async () => {
-    const rows = await fetchAllChats();
-    if (!rows.length) { toast.error("No activity to export"); return; }
-    const esc = (v: string) => `"${(v ?? "").replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
-    const csv = ["Timestamp,Message,Response", ...rows.map((r: any) =>
-      [esc(new Date(r.created_at).toISOString()), esc(r.message), esc(r.response)].join(",")
-    )].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  useEffect(() => { loadHistory(); }, [user]);
+
+  const handleProvider = (p: string) => {
+    setProvider(p);
+    setTimeout(loadHistory, 600);
+  };
+
+  const fetchReportData = async () => {
+    const [s, i, c] = await Promise.all([
+      supabase.from("sales_records").select("*").order("created_at", { ascending: false }).limit(200),
+      supabase.from("inventory").select("*"),
+      supabase.from("contracts").select("*"),
+    ]);
+    return { sales: s.data ?? [], inventory: i.data ?? [], contracts: c.data ?? [] };
+  };
+
+  const summaryText = async () => {
+    const d = await fetchReportData();
+    const rev = d.sales.reduce((s, r: any) => s + Number(r.amount), 0);
+    const low = d.inventory.filter((x: any) => x.quantity <= x.reorder_level).length;
+    const cust = new Set(d.sales.map((s: any) => s.customer).filter(Boolean)).size;
+    return lastResponse?.trim() ||
+      `Nexova business summary: revenue $${rev.toLocaleString()} across ${d.sales.length} orders from ${cust} customers. ${low} items below reorder level. ${d.contracts.length} contracts on file.`;
+  };
+
+  const generatePDF = async () => {
+    try {
+      const d = await fetchReportData();
+      const summary = await summaryText();
+      const doc = buildBusinessReport({ ...d, aiSummary: summary, user: profile?.name ?? user?.email });
+      doc.save(`nexova-report-${Date.now()}.pdf`);
+      toast.success("PDF report generated");
+    } catch (e: any) {
+      toast.error("PDF generation failed");
+    }
+  };
+
+  const exportChat = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("chat_history")
+      .select("created_at,message,response")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (!data?.length) { toast.error("No chat history yet"); return; }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `nexova-ai-activity-${Date.now()}.csv`;
+    a.href = url; a.download = `nexova-chat-${Date.now()}.json`;
     a.click(); URL.revokeObjectURL(url);
-    toast.success(`Exported ${rows.length} conversations`);
+    toast.success(`Exported ${data.length} messages`);
   };
 
-  const exportPDF = async () => {
-    const rows = await fetchAllChats();
-    if (!rows.length) { toast.error("No activity to export"); return; }
-    const doc = new jsPDF();
-    doc.setFontSize(18); doc.text("Nexova AI — Activity Report", 14, 18);
-    doc.setFontSize(10); doc.setTextColor(120);
-    doc.text(`Generated ${new Date().toLocaleString()} · ${rows.length} conversations`, 14, 25);
-    autoTable(doc, {
-      startY: 32,
-      head: [["Time", "Message", "Response"]],
-      body: rows.map((r: any) => [
-        new Date(r.created_at).toLocaleString(),
-        (r.message ?? "").slice(0, 80),
-        (r.response ?? "").slice(0, 140),
-      ]),
-      styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
-      headStyles: { fillColor: [230, 120, 60] },
-      columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 60 }, 2: { cellWidth: 'auto' } },
-    });
-    doc.save(`nexova-ai-activity-${Date.now()}.pdf`);
-    toast.success(`Exported ${rows.length} conversations`);
+  const shareReport = async () => {
+    const text = await summaryText();
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Nexova AI Report", text });
+        toast.success("Shared");
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(text);
+      toast.success("Share text copied to clipboard");
+    }
   };
 
-  useEffect(() => { loadStats(); }, [user]);
+  const copySummary = async () => {
+    const text = await summaryText();
+    await navigator.clipboard.writeText(text);
+    toast.success("Summary copied");
+  };
 
   return (
     <>
-      <TopBar title="AI Agent" onRefresh={loadStats} />
+      <TopBar title="AI Agent" onRefresh={loadHistory} />
       <div className="grid grid-cols-1 gap-4 p-3 sm:gap-6 sm:p-8 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4 sm:space-y-5">
+        <div className="space-y-4 sm:space-y-5 lg:col-span-2">
+          {/* Hero */}
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/15 via-card to-card p-4 sm:p-5"
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/15 via-card to-card p-5"
           >
-            <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/20 blur-3xl" />
+            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
             <div className="relative flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-primary">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-foreground text-primary">
                   <Sparkles className="h-5 w-5" fill="currentColor" />
                 </div>
                 <div>
-                  <div className="text-base font-bold sm:text-lg">Nexova AI Agent</div>
-                  <div className="text-[11px] text-muted-foreground sm:text-xs">Real-time RAG · Gemini 2.5 Flash · Live data</div>
+                  <div className="text-base font-bold sm:text-lg">Nexova AI Command Center</div>
+                  <div className="text-[11px] text-muted-foreground sm:text-xs">RAG · Live Supabase data · Streaming responses</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <motion.button
-                  whileTap={{ scale: 0.94 }} onClick={exportCSV}
-                  className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold transition hover:border-primary hover:bg-secondary"
-                >
-                  <FileDown className="h-3.5 w-3.5" /> CSV
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.94 }} onClick={exportPDF}
-                  className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:opacity-95"
-                >
-                  <Download className="h-3.5 w-3.5" /> PDF
-                </motion.button>
+                <ProviderPill active={provider === "gemini"} color="green" label="Gemini" />
+                <ProviderPill active={provider === "fallback"} color="blue" label="Fallback" />
               </div>
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-3 gap-2 sm:gap-3">
-            <StatPill icon={MessageSquare} label="Chats" value={totalChats.toString()} sub="14d" />
-            <StatPill icon={Activity} label="Avg/day" value={(totalChats / 14).toFixed(1)} sub="usage" />
-            <StatPill icon={Sparkles} label="Model" value="Gemini" sub="2.5 Flash" />
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <div className="text-xs text-muted-foreground">AI Activity</div>
-                <div className="text-sm font-bold">Conversations · Last 14 days</div>
-              </div>
-              <Activity className="h-4 w-4 text-primary" />
-            </div>
-            <div className="h-44">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={usage}>
-                  <defs>
-                    <linearGradient id="aiUsage" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="oklch(0.69 0.19 45)" stopOpacity={0.45} />
-                      <stop offset="100%" stopColor="oklch(0.69 0.19 45)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.93 0.005 80)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-                  <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 8px 24px oklch(0.18 0.02 270 / 0.1)" }} />
-                  <Area type="monotone" dataKey="count" stroke="oklch(0.69 0.19 45)" strokeWidth={2.5} fill="url(#aiUsage)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <div className="text-xs text-muted-foreground">Provider mix</div>
-                <div className="text-sm font-bold">Gemini vs Fallback</div>
-              </div>
-              <Bot className="h-4 w-4 text-primary" />
-            </div>
-            <div className="h-36">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={providerStats}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.93 0.005 80)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-                  <Tooltip contentStyle={{ borderRadius: 12, border: "none" }} />
-                  <Bar dataKey="value" fill="oklch(0.69 0.19 45)" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </motion.div>
-
-          <div className="h-[600px]">
-            <ChatPanel onProviderChange={setProvider} />
+          {/* Chat */}
+          <div className="h-[640px]">
+            <ChatPanel onProviderChange={handleProvider} />
           </div>
         </div>
+
         <div className="space-y-5">
+          {/* Report actions */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+            <div className="mb-3 flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-bold">Reports & Sharing</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <ActionBtn icon={Download} label="Generate PDF" onClick={generatePDF} primary />
+              <ActionBtn icon={FileDown} label="Export Chat" onClick={exportChat} />
+              <ActionBtn icon={Share2} label="Share Report" onClick={shareReport} />
+              <ActionBtn icon={Copy} label="Copy Summary" onClick={copySummary} />
+            </div>
+          </motion.div>
+
+          {/* Quick Questions */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+            <div className="mb-3 flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-bold">Quick Questions</h3>
+            </div>
+            <div className="space-y-2">
+              {QUICK.map(q => (
+                <button
+                  key={q}
+                  onClick={() => triggerChatSend(q)}
+                  className="w-full rounded-xl border border-border bg-background p-2.5 text-left text-xs leading-relaxed transition hover:border-primary hover:bg-secondary"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Capabilities */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
             <div className="mb-3 flex items-center gap-2">
               <Bot className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-bold">AI Capabilities</h3>
@@ -230,35 +208,24 @@ function AIAgent() {
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-            <h3 className="mb-3 text-sm font-bold">Quick Questions</h3>
-            <div className="space-y-2">
-              {QUICK.map(q => (
+          {/* History */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+            <div className="mb-3 flex items-center gap-2">
+              <History className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-bold">Recent History</h3>
+            </div>
+            <div className="max-h-72 space-y-2 overflow-y-auto">
+              {history.length === 0 && <div className="rounded-xl bg-secondary/50 p-3 text-xs text-muted-foreground">No chats yet.</div>}
+              {history.slice(0, 10).map((h, i) => (
                 <button
-                  key={q}
-                  onClick={() => triggerChatSend(q)}
-                  className="w-full rounded-xl border border-border bg-background p-2.5 text-left text-xs leading-relaxed transition hover:border-primary hover:bg-secondary"
+                  key={i}
+                  onClick={() => triggerChatSend(h.message)}
+                  className="w-full rounded-xl border border-border bg-background p-2.5 text-left transition hover:border-primary hover:bg-secondary"
                 >
-                  {q}
+                  <div className="truncate text-xs font-semibold">{h.message}</div>
+                  <div className="mt-0.5 text-[10px] text-muted-foreground">{new Date(h.created_at).toLocaleString()}</div>
                 </button>
               ))}
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-            <h3 className="mb-3 text-sm font-bold">AI Provider Chain</h3>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${provider === "gemini" ? "bg-[oklch(0.7_0.17_150)]" : "bg-muted"}`} />
-                <span>Primary: <strong>Gemini 2.5 Flash</strong></span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${provider === "fallback" ? "bg-[oklch(0.7_0.17_240)]" : "bg-muted"}`} />
-                <span>Fallback: Rule-based</span>
-              </div>
-              <div className="mt-2 rounded-lg bg-secondary p-2 text-[11px] text-muted-foreground">
-                Last response: <strong className="text-foreground">{provider === "gemini" ? "Gemini" : "Rule-based"}</strong>
-              </div>
             </div>
           </motion.div>
         </div>
@@ -267,17 +234,30 @@ function AIAgent() {
   );
 }
 
-function StatPill({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub: string }) {
+function ProviderPill({ active, color, label }: { active: boolean; color: "green" | "blue"; label: string }) {
+  const dot = active
+    ? (color === "green" ? "bg-[oklch(0.7_0.17_150)]" : "bg-[oklch(0.7_0.17_240)]")
+    : "bg-muted";
   return (
-    <div className="rounded-2xl border border-border bg-card p-3 shadow-[var(--shadow-soft)]">
-      <div className="flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Icon className="h-3.5 w-3.5" />
-        </div>
-        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      </div>
-      <div className="mt-2 text-lg font-bold leading-tight">{value}</div>
-      <div className="text-[10px] text-muted-foreground">{sub}</div>
+    <div className={`flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold ${active ? "" : "opacity-60"}`}>
+      <span className={`h-2 w-2 rounded-full ${dot} ${active ? "animate-pulse" : ""}`} />
+      {label}{active && " active"}
     </div>
+  );
+}
+
+function ActionBtn({ icon: Icon, label, onClick, primary }: any) {
+  return (
+    <motion.button
+      whileTap={{ scale: 0.95 }} whileHover={{ y: -1 }}
+      onClick={onClick}
+      className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition ${
+        primary
+          ? "bg-primary text-primary-foreground shadow-[var(--shadow-glow)] hover:opacity-95"
+          : "border border-border bg-background hover:border-primary hover:bg-secondary"
+      }`}
+    >
+      <Icon className="h-3.5 w-3.5" /> {label}
+    </motion.button>
   );
 }
