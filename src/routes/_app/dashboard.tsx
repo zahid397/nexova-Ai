@@ -107,13 +107,16 @@ function Dashboard() {
     try {
       const res = await ask({ data: { message: "Give me a concise 2-3 sentence executive summary of current revenue, orders, profit margin, and inventory health for the dashboard insight card." } });
       setInsight({ text: res.response, provider: res.provider });
-    } catch {
-      toast.error("Insight generation failed");
+    } catch (e) {
+      console.error("insight error", e);
+      setInsight({
+        text: `Revenue is $${data.revenue.toLocaleString()} across ${data.orders} orders with a ${data.margin.toFixed(1)}% margin. ${data.lowStock.length} inventory item${data.lowStock.length === 1 ? "" : "s"} ${data.lowStock.length === 1 ? "is" : "are"} below reorder level — review recommended.`,
+        provider: "fallback",
+      });
     } finally { setInsightLoading(false); }
   };
 
   useEffect(() => { load(); }, [range]);
-  useEffect(() => { generateInsight(); }, []);
 
   return (
     <div ref={rootRef}>
