@@ -71,10 +71,10 @@ function ResetPasswordPage() {
             />
           </div>
           <motion.button
-            whileTap={{ scale: 0.98 }} disabled={loading} type="submit"
+            whileTap={{ scale: 0.98 }} disabled={loading || !ready} type="submit"
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-[oklch(0.65_0.21_35)] py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] disabled:opacity-60"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (<>Update Password <ArrowRight className="h-4 w-4" /></>)}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : !ready ? "Waiting for recovery link…" : (<>Update Password <ArrowRight className="h-4 w-4" /></>)}
           </motion.button>
         </form>
 
