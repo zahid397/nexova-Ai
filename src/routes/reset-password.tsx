@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { Lock, Loader2, ArrowRight, Star } from "lucide-react";
@@ -12,6 +12,17 @@ function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    // Supabase auto-parses recovery tokens from URL hash (detectSessionInUrl: true).
+    // Listen for the PASSWORD_RECOVERY event, then allow updating the password.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || session) setReady(true);
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => { if (session) setReady(true); });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -22,7 +33,7 @@ function ResetPasswordPage() {
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Password updated — signing you in");
-    nav({ to: "/dashboard" });
+    nav({ to: "/dashboard", replace: true });
   };
 
   return (
