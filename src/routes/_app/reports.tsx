@@ -40,9 +40,18 @@ function SalesTable() {
     supabase.from("sales_records").select("*").order("created_at", { ascending: false }).limit(100)
       .then(({ data }) => { setRows(data ?? []); setLoading(false); });
   }, []);
+  const esc = (v: any) => {
+    let s = v == null ? "" : String(v);
+    // Prevent CSV formula injection in Excel/Sheets
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    // Escape quotes and wrap
+    return `"${s.replace(/"/g, '""')}"`;
+  };
   const exportCsv = () => {
     const header = "order_id,customer,product,amount,status,date\n";
-    const body = rows.map(r => `${r.order_id},${r.customer},${r.product_name},${r.amount},${r.status},${r.created_at}`).join("\n");
+    const body = rows
+      .map(r => [r.order_id, r.customer, r.product_name, r.amount, r.status, r.created_at].map(esc).join(","))
+      .join("\n");
     const blob = new Blob([header + body], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = "sales.csv"; a.click();
