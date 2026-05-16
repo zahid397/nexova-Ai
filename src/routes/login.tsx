@@ -36,8 +36,11 @@ function LoginPage() {
         ? await signIn(email, password)
         : await signUp(email, password, name);
       if (res.error) throw new Error(res.error);
+      // Wait for session to hydrate before redirect (avoids guard race on Vercel SPA)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Could not establish session. Please try again.");
       toast.success(mode === "signin" ? "Welcome back!" : "Account created — welcome!");
-      nav({ to: "/dashboard" });
+      nav({ to: "/dashboard", replace: true });
     } catch (err: any) {
       toast.error(err.message || "Something went wrong");
     } finally {
