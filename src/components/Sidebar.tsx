@@ -94,7 +94,7 @@ export function Sidebar() {
             {dark ? "Light" : "Dark"}
           </button>
           <button
-            onClick={async () => { await signOut(); nav({ to: "/login" }); }}
+            onClick={async () => { await signOut(); nav({ to: "/login", replace: true }); }}
             className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground hover:bg-destructive hover:text-destructive-foreground"
           >
             <LogOut className="h-3.5 w-3.5" />
