@@ -9,7 +9,7 @@ function AppLayout() {
   const { user, loading } = useAuth();
   const nav = useNavigate();
   useEffect(() => {
-    if (!loading && !user) nav({ to: "/login" });
+    if (!loading && !user) nav({ to: "/login", replace: true });
   }, [loading, user, nav]);
   if (loading || !user) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading...</div>;
